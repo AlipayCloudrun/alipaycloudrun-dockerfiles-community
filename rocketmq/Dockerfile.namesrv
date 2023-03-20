@@ -1,3 +1,43 @@
 FROM apache/rocketmq:4.9.4
+USER root
 
-cmd ["/bin/sh", "mqnamesrv"]
+# install a dns to http script for returning all namesrv addresses.
+RUN curl -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-7.repo && \
+    sed -i -e '/mirrors.cloud.aliyuncs.com/d' -e '/mirrors.aliyuncs.com/d' /etc/yum.repos.d/CentOS-Base.repo
+RUN yum install -y python3-pip && yum clean all && \
+    pip3 install dnspython flask
+RUN mkdir /home/rocketmq/addrsrv && \
+    cat > /home/rocketmq/addrsrv/app.py <<EOF
+# coding=utf-8
+import os
+
+from flask import Flask
+import dns.resolver
+
+app = Flask(__name__)
+
+NAMESRV_DOMAIN = os.environ.get("CLOUDRUN_PAASCORE_SERVICE_NAME")
+
+CACHED_RET = ""
+
+@app.route("/rocketmq/nsaddr")
+def nsaddr():
+    r = dns.resolver.Resolver()
+    r.use_search_by_default = True
+    ans = r.resolve(NAMESRV_DOMAIN, 'A')
+    if ans:
+        CACHED_RET = ";".join("{}:{}".format(a, 9876) for a in ans.rrset)
+    return CACHED_RET
+EOF
+
+# A entry script to launch flask http service and namesrv
+COPY --chmod=755 <<EOF mqnamesrv-addrsrv
+#!/bin/bash
+pushd /home/rocketmq/addrsrv
+LANG=en_US.UTF-8 flask run -h 0.0.0.0 -p 8080 &
+popd
+/bin/sh mqnamesrv
+EOF
+
+USER rocketmq
+cmd ["/bin/sh", "mqnamesrv-addrsrv"]

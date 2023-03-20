@@ -1,0 +1,14 @@
+FROM apache/rocketmq:4.9.4
+COPY --chmod=755 <<'EOF' mqbroker-nsdomain
+#!/bin/sh
+if [[ -n $NAMESRV_DOMAIN ]]; then
+  NAMESRV_ADDR=$(curl http://$NAMESRV_DOMAIN/rocketmq/nsaddr)
+  if [[ -n $NAMESRV_ADDR ]]; then
+    export NAMESRV_ADDR
+  fi
+  export JAVA_OPT="$JAVA_OPT -DfetchNamesrvAddrByAddressServer=true -Drocketmq.namesrv.domain=${NAMESRV_DOMAIN}" 
+fi
+
+/bin/sh mqbroker
+EOF
+ENTRYPOINT ["/bin/sh", "mqbroker-nsdomain"]

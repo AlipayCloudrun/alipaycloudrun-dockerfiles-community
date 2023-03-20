@@ -1,3 +1,0 @@
-FROM apache/rocketmq:4.9.4
-
-cmd ["/bin/sh", "mqbroker"]
