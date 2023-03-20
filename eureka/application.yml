@@ -1,0 +1,15 @@
+server:
+  port: ${SERVER_PORT:8761}
+
+eureka:
+  instance:
+    hostname: ${HOSTNAME}
+    leaseRenewalIntervalInSeconds: ${LEASE_RENEWAL_INTERVAL_IN_SECONDS:30}
+  client:
+    registerWithEureka: ${REGISTER_WITH_EUREKA:true}
+    fetchRegistry: ${FETCH_REGISTRY:true}
+    serviceUrl:
+      defaultZone: ${SERVICE_URL_DEFAULT_ZONE}
+  server:
+    enableSelfPreservation: ${ENABLE_SELF_PRESERVATION:true}
+    waitTimeInMsWhenSyncEmpty: 0
