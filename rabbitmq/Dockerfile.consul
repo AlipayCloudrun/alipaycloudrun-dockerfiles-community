@@ -1,0 +1,23 @@
+FROM rabbitmq:3.11-management
+
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/' /etc/apt/sources.list && \
+    apt update && \
+    apt install -y curl dnsutils iputils-ping && \
+    apt clean
+# 使用consul做为集群发现
+RUN rabbitmq-plugins --offline enable rabbitmq_peer_discovery_consul
+# 配置 erlang cookie
+RUN echo 'some_cookie_string' > /var/lib/rabbitmq/.erlang.cookie && \
+    chown rabbitmq:rabbitmq /var/lib/rabbitmq/.erlang.cookie && \
+    chmod 600 /var/lib/rabbitmq/.erlang.cookie
+RUN cat > /etc/rabbitmq/conf.d/20-cluster.conf <<'EOF'
+cluster_formation.peer_discovery_backend = consul
+cluster_formation.consul.host =  # consul服务名
+
+cluster_formation.consul.svc = rabbitmq
+# do compute service address
+cluster_formation.consul.svc_addr_auto = true
+cluster_formation.consul.svc_addr_use_nodename = true
+# use long RabbitMQ node names?
+cluster_formation.consul.use_longname = false
+EOF
