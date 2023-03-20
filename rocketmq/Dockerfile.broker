@@ -1,6 +1,11 @@
 FROM apache/rocketmq:4.9.4
-COPY --chmod=755 <<'EOF' mqbroker-nsdomain
+COPY --chmod=755 <<'EEOF' mqbroker-nsdomain
 #!/bin/sh
+# fix for permission
+[[ "$(stat -c %U /home/rocketmq/store/)" != "rocketmq" ]] && chown rocketmq:rocketmq /home/rocketmq/store
+su rocketmq << 'EOF'
+set -x
+ls -ld /home/rocketmq/store
 if [[ -n $NAMESRV_DOMAIN ]]; then
   NAMESRV_ADDR=$(curl http://$NAMESRV_DOMAIN/rocketmq/nsaddr)
   if [[ -n $NAMESRV_ADDR ]]; then
@@ -8,7 +13,9 @@ if [[ -n $NAMESRV_DOMAIN ]]; then
   fi
   export JAVA_OPT="$JAVA_OPT -DfetchNamesrvAddrByAddressServer=true -Drocketmq.namesrv.domain=${NAMESRV_DOMAIN}" 
 fi
-
-/bin/sh mqbroker
+/bin/sh -x mqbroker
 EOF
+EEOF
+
+USER root
 ENTRYPOINT ["/bin/sh", "mqbroker-nsdomain"]
